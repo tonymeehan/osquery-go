@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/osquery/osquery-go"
 	"github.com/osquery/osquery-go/plugin/table"
@@ -18,24 +17,12 @@ import (
 
 var (
 	socketPath = flag.String("socket", "", "Path to osquery extension socket")
-	configPath = flag.String("config", "", "Path to preq config file")
-	token      = flag.String("token", "", "JWT token for rule updates")
 )
 
 func main() {
 	flag.Parse()
 	if *socketPath == "" {
 		log.Fatalf("Missing required --socket flag")
-	}
-	if *configPath == "" {
-		log.Fatalf("Missing required --config flag")
-	}
-	if *token == "" {
-		log.Fatalf("Missing required --token flag")
-	}
-
-	if err := setupEnv(*configPath, *token); err != nil {
-		log.Fatalf("Failed to write token: %v", err)
 	}
 
 	server, err := osquery.NewExtensionManagerServer("preq", *socketPath)
@@ -57,25 +44,6 @@ func columns() []table.ColumnDefinition {
 		table.TextColumn("cre_id"),
 		table.TextColumn("message"),
 	}
-}
-
-func setupEnv(cfg, tok string) error {
-	home := filepath.Dir(cfg)
-	confDir := filepath.Join(home, ".config", "preq")
-	if err := os.MkdirAll(confDir, 0755); err != nil {
-		return err
-	}
-	data, err := os.ReadFile(cfg)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(confDir, "config.yaml"), data, 0644); err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(confDir, ".ruletoken"), []byte(tok), 0600); err != nil {
-		return err
-	}
-	return os.Setenv("HOME", home)
 }
 
 func generate(ctx context.Context, qc table.QueryContext) ([]map[string]string, error) {
